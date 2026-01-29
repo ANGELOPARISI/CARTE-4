@@ -301,27 +301,32 @@
         }
 
         .info-tooltip {
-            position: absolute;
-            bottom: 65px;
-            left: 50%;
-            transform: translateX(-50%) translateY(10px);
-            background-color: #5D3A1A;
-            border: 1px solid var(--amber-warm);
-            color: var(--text-light);
-            padding: 8px 12px;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            white-space: nowrap;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            bottom: auto;
+            transform: none;
+            
+            background-color: transparent;
+            border: none;
+            color: #fff;
+            padding: 0;
+            border-radius: 0;
+            
+            font-family: 'Century Gothic', sans-serif;
+            font-size: 12px;
+            font-weight: normal;
+            
+            box-shadow: none;
             opacity: 0;
-            transition: all 0.3s ease;
+            transition: opacity 0.3s ease;
             pointer-events: none;
-            min-width: 40px;
-            text-align: center;
+            min-width: auto;
+            text-align: left;
+            z-index: 9999;
         }
 
-        .info-tooltip.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .info-tooltip.show { opacity: 0.35; transform: none; }
 
         .spread-viewport {
             width: 100%;

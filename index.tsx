@@ -653,6 +653,10 @@ const App = () => {
 
         return (
             <>
+                <div className={`info-tooltip ${showInfo ? 'show' : ''}`}>
+                    {totalPlannedCards}
+                </div>
+
                 <div className="header-reading">
                      {(question || consultantName) && (
                         <div className="question-display">
@@ -676,9 +680,6 @@ const App = () => {
                 </div>
 
                 <div className="info-toggle-container">
-                    <div className={`info-tooltip ${showInfo ? 'show' : ''}`}>
-                        {totalPlannedCards}
-                    </div>
                     <button 
                         className="info-icon-btn" 
                         onClick={() => setShowInfo(!showInfo)}
