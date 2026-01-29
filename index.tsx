@@ -6,8 +6,8 @@ import { MAJOR_ARCANA_IMAGES, MINOR_ARCANA_IMAGES, MAJOR_BACK_IMAGE } from './ca
 const DEAL_INTERVAL_MS = 1200; // Tempo tra una carta e l'altra (ms)
 const FLIP_OFFSET_MS = 600;    // Ritardo del flip rispetto alla comparsa (ms)
 
-const MIN_SCALE = 0.15;
-const MAX_SCALE = 1.3;
+const MIN_SCALE = 0.6;
+const MAX_SCALE = 1.6;
 const DEFAULT_SCALE = 1.0;
 
 // --- Data Structures & Hardcoded Rules ---
@@ -336,6 +336,15 @@ const App = () => {
         return DEFAULT_SCALE;
     });
 
+    // Ref per mantenere il valore corrente di zoomLevel accessibile all'interno degli event listener
+    const zoomLevelRef = useRef(zoomLevel);
+    useEffect(() => {
+        zoomLevelRef.current = zoomLevel;
+    }, [zoomLevel]);
+
+    const initialDistance = useRef<number | null>(null);
+    const initialScale = useRef<number>(1);
+    const isPinching = useRef(false);
     const animationTimers = useRef<number[]>([]);
 
     const clearAllTimers = useCallback(() => {
@@ -357,40 +366,62 @@ const App = () => {
     };
     
     const viewportRef = useRef<HTMLDivElement>(null);
-    const isDragging = useRef(false);
-    const lastPos = useRef({ x: 0, y: 0 });
-    const isClickBlocked = useRef(false);
+
+    // --- Native Touch Event Listeners per Pinch-to-Zoom ---
+    const isReadingFinished = reading ? (reading.isComplete || isStoppedManually) : false;
 
     useEffect(() => {
-        if (view === 'reading' && reading && viewportRef.current) {
-            const { bounds } = reading;
-            
-            // Layout dimensions multiplied by zoomLevel to ensure centering is correct
-            const currentWidth = BASE_CARD_WIDTH * zoomLevel;
-            const currentHeight = BASE_CARD_HEIGHT * zoomLevel;
-            const currentGap = BASE_GAP * zoomLevel;
+        const viewport = viewportRef.current;
+        if (!viewport || !isReadingFinished) return;
 
-            const gridWidth = bounds.maxX - bounds.minX + 1;
-            const gridHeight = bounds.maxY - bounds.minY + 1;
-            
-            const totalWidth = gridWidth * currentWidth + (gridWidth - 1) * currentGap;
-            const totalHeight = gridHeight * currentHeight + (gridHeight - 1) * currentGap;
-            
-            const contentWidth = totalWidth + PADDING * 2;
-            const contentHeight = totalHeight + PADDING * 2;
-            
-            const viewport = viewportRef.current;
-            
-            const scrollLeft = (contentWidth - viewport.clientWidth) / 2;
-            const scrollTop = (contentHeight - viewport.clientHeight) / 2;
+        const onTouchStart = (e: TouchEvent) => {
+            if (e.touches.length === 2) {
+                isPinching.current = true;
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                initialDistance.current = Math.hypot(dx, dy);
+                initialScale.current = zoomLevelRef.current;
+            }
+        };
 
-            viewport.scrollTo({
-                left: scrollLeft,
-                top: scrollTop,
-                behavior: 'smooth'
-            });
-        }
-    }, [reading?.dealtCards, zoomLevel, view]);
+        const onTouchMove = (e: TouchEvent) => {
+            if (e.touches.length === 2 && isPinching.current) {
+                // Fondamentale per iOS: previene lo scroll nativo e permette il pinch
+                e.preventDefault();
+                
+                const dx = e.touches[0].clientX - e.touches[1].clientX;
+                const dy = e.touches[0].clientY - e.touches[1].clientY;
+                const currentDist = Math.hypot(dx, dy);
+                
+                if (initialDistance.current && initialDistance.current > 0) {
+                    const ratio = currentDist / initialDistance.current;
+                    const nextZoom = Math.min(Math.max(initialScale.current * ratio, MIN_SCALE), MAX_SCALE);
+                    
+                    setZoomLevel(nextZoom);
+                }
+            }
+        };
+
+        const onTouchEnd = (e: TouchEvent) => {
+            if (e.touches.length < 2) {
+                isPinching.current = false;
+                initialDistance.current = null;
+                // Salva lo zoom corrente alla fine del gesto
+                localStorage.setItem('tarot_zoom', zoomLevelRef.current.toString());
+            }
+        };
+
+        // passive: false è obbligatorio per poter chiamare e.preventDefault() in touchmove
+        viewport.addEventListener('touchstart', onTouchStart, { passive: false });
+        viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+        viewport.addEventListener('touchend', onTouchEnd, { passive: false });
+
+        return () => {
+            viewport.removeEventListener('touchstart', onTouchStart);
+            viewport.removeEventListener('touchmove', onTouchMove);
+            viewport.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [isReadingFinished]); // Riattacca i listener solo quando lo stato di completamento cambia
 
     const handleStartReading = useCallback(() => {
         if (isInteracting) return;
@@ -404,7 +435,6 @@ const App = () => {
         const fullInitialState = initializeReading();
         const baseCards = [...fullInitialState.dealtCards];
         
-        // Iniziamo con 0 carte nella stesa visibile per poterle aggiungere una alla volta
         const stateToStart: ReadingState = { 
             ...fullInitialState, 
             dealtCards: [], 
@@ -419,7 +449,6 @@ const App = () => {
         baseCards.forEach((card, index) => {
             const baseDelay = index * DEAL_INTERVAL_MS;
             
-            // 1. Aggiungi alla stesa (Mount Phase)
             const tMount = window.setTimeout(() => {
                 setReading(prev => {
                     if (!prev) return prev;
@@ -442,12 +471,10 @@ const App = () => {
                 });
             }, baseDelay);
 
-            // 2. Rendi visibile (Opacity Phase) - garantisce che la carta sia nel DOM prima di animarla
             const tVisible = window.setTimeout(() => {
                 setVisibleCardIds(prev => new Set(prev).add(card.id));
             }, baseDelay + 50);
 
-            // 3. Volta la carta (Flip Phase)
             const tFlip = window.setTimeout(() => {
                 setFlippedCardIds(prev => new Set(prev).add(card.id));
             }, baseDelay + FLIP_OFFSET_MS);
@@ -467,7 +494,6 @@ const App = () => {
         setReading(newState);
         const lastCard = newState.dealtCards[newState.dealtCards.length - 1];
         
-        // Sincronizzazione per le carte estratte successivamente
         const tVisible = window.setTimeout(() => {
             setVisibleCardIds(prev => new Set(prev).add(lastCard.id));
         }, 50);
@@ -539,7 +565,7 @@ const App = () => {
     };
 
     const handleMajorClick = (cardId: number) => {
-        if (isClickBlocked.current || isInteracting) return;
+        if (isInteracting || isPinching.current) return;
         if (!reading || !flippedCardIds.has(cardId)) return;
         const assoc = reading.minorAssociations[cardId];
         
@@ -573,7 +599,7 @@ const App = () => {
 
     const handleMinorClick = (cardId: number, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (isClickBlocked.current || isInteracting) return;
+        if (isInteracting || isPinching.current) return;
         if (!reading) return;
         const assoc = reading.minorAssociations[cardId];
         
@@ -608,34 +634,6 @@ const App = () => {
         }
     };
 
-    const handleMouseDown = (e: React.MouseEvent) => {
-        if (!viewportRef.current) return;
-        isDragging.current = true;
-        isClickBlocked.current = false;
-        lastPos.current = { x: e.clientX, y: e.clientY };
-        viewportRef.current.style.cursor = 'grabbing';
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging.current || !viewportRef.current) return;
-        e.preventDefault();
-        const dx = e.clientX - lastPos.current.x;
-        const dy = e.clientY - lastPos.current.y;
-        if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-             isClickBlocked.current = true;
-        }
-        viewportRef.current.scrollLeft -= dx;
-        viewportRef.current.scrollTop -= dy;
-        lastPos.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleMouseUp = () => {
-        isDragging.current = false;
-        if (viewportRef.current) {
-            viewportRef.current.style.cursor = 'grab';
-        }
-    };
-
     const formatDateDisplay = (dateStr: string) => {
         if (!dateStr) return "";
         const parts = dateStr.split('-');
@@ -650,13 +648,8 @@ const App = () => {
         const gridWidth = bounds.maxX - bounds.minX + 1;
         const gridHeight = bounds.maxY - bounds.minY + 1;
         
-        // Base dimensions (not scaled by zoomLevel)
         const totalWidthBase = gridWidth * BASE_CARD_WIDTH + (gridWidth - 1) * BASE_GAP;
         const totalHeightBase = gridHeight * BASE_CARD_HEIGHT + (gridHeight - 1) * BASE_GAP;
-        
-        // Scaled total size for content scrolling area
-        const contentWidth = (totalWidthBase * zoomLevel) + PADDING * 2;
-        const contentHeight = (totalHeightBase * zoomLevel) + PADDING * 2;
 
         return (
             <>
@@ -675,6 +668,11 @@ const App = () => {
                         <button className="zoom-btn" onClick={() => handleZoomChange(-0.1)}>−</button>
                         <button className="zoom-btn" onClick={() => handleZoomChange(0.1)}>+</button>
                     </div>
+                    {isReadingFinished && Math.abs(zoomLevel - 1.0) > 0.05 && (
+                        <button className="reset-zoom-btn" onClick={() => setZoomLevel(1.0)}>
+                            RESET ZOOM
+                        </button>
+                    )}
                 </div>
 
                 <div className="info-toggle-container">
@@ -724,15 +722,15 @@ const App = () => {
                 <div 
                     className="spread-viewport" 
                     ref={viewportRef}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
-                    onMouseLeave={handleMouseUp}
-                    onClick={() => { if(showInfo) setShowInfo(false); }}
+                    style={{ 
+                        touchAction: isReadingFinished ? 'none' : 'auto',
+                        WebkitUserSelect: isReadingFinished ? 'none' : 'auto',
+                        userSelect: isReadingFinished ? 'none' : 'auto',
+                    }}
                 >
                    <div style={{
-                        width: `${contentWidth}px`,
-                        height: `${contentHeight}px`,
+                        width: '100%',
+                        height: '100%',
                         position: 'relative'
                    }} id="spread-area">
                         <div style={{
@@ -741,9 +739,8 @@ const App = () => {
                             height: `${totalHeightBase}px`,
                             left: '50%',
                             top: '50%',
-                            // Scale applied to the whole board container
                             transform: `translate(-50%, -50%) scale(${zoomLevel})`,
-                            transformOrigin: 'center'
+                            transformOrigin: 'center center'
                         }}>
                             {dealtCards.map((card, i) => {
                                 const col = card.position.x - bounds.minX;
@@ -755,8 +752,6 @@ const App = () => {
                                 const isFlipped = flippedCardIds.has(card.id);
                                 const isVisible = visibleCardIds.has(card.id);
                                 const assoc = minorAssociations[card.id];
-                                
-                                // Gestione z-index: se la carta minore associata è ingrandita, il parent card riceve z-index massimo
                                 const isZoomed = assoc && assoc.visible && assoc.enlarged;
 
                                 const label = i === 0 ? "PASSATO" : i === 1 ? "PRESENTE" : i === 2 ? "FUTURO" : null;
@@ -793,7 +788,6 @@ const App = () => {
                                                 onClick={(e) => handleMinorClick(card.id, e)}
                                             >
                                                 <div className="card-inner">
-                                                    {/* Gli Arcani Minori non hanno retro, appaiono direttamente dal front */}
                                                     <div className="card-front">
                                                         <img src={MINOR_ARCANA_IMAGES[assoc.tarotNumber]} className="unfiltered" alt="Minor Arcana" />
                                                     </div>
@@ -831,8 +825,7 @@ const App = () => {
             </div>
 
             <div className="home-main-column">
-                <input 
-                    type="text" 
+                <textarea 
                     className="question-input"
                     placeholder="LA TUA DOMANDA"
                     value={question}

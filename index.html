@@ -82,7 +82,7 @@
         }
 
         /* Pulsanti Globali */
-        button, .zoom-btn, .info-icon-btn, .draw-icon-btn, .action-btn {
+        button, .zoom-btn, .info-icon-btn, .draw-icon-btn, .action-btn, .reset-zoom-btn {
             font-family: 'Cinzel', serif;
             font-size: 1rem;
             font-style: italic;
@@ -98,7 +98,7 @@
             font-weight: 700;
         }
 
-        button:hover, .zoom-btn:hover, .info-icon-btn:hover, .draw-icon-btn:hover, .action-btn:hover {
+        button:hover, .zoom-btn:hover, .info-icon-btn:hover, .draw-icon-btn:hover, .action-btn:hover, .reset-zoom-btn:hover {
             background-color: var(--amber-warm);
             color: var(--text-light);
             box-shadow: 0 0 20px rgba(253, 187, 109, 0.6);
@@ -127,6 +127,13 @@
             color: var(--amber-dark) !important;
             padding: 0 !important;
             box-shadow: 0 2px 5px var(--glow-soft) !important;
+        }
+
+        .reset-zoom-btn {
+            font-size: 0.8rem !important;
+            padding: 4px 8px !important;
+            margin-top: 5px;
+            display: block;
         }
 
         .draw-icon-btn svg {
@@ -202,6 +209,20 @@
         .question-input {
             background-color: rgba(252, 214, 167, 0.85) !important;
             outline: none;
+            height: 120px !important;
+            display: block !important;
+            white-space: pre-wrap !important;
+            overflow-y: auto !important;
+            resize: none !important;
+            padding: 15px !important;
+            line-height: 1.4 !important;
+            
+            /* Override to match .name-input style exactly for text rendering */
+            text-transform: none !important;
+            font-family: 'Century Gothic', sans-serif !important;
+            font-size: 1rem !important;
+            font-weight: normal !important;
+            letter-spacing: normal !important;
         }
 
         .question-input::placeholder {
@@ -225,8 +246,15 @@
         }
 
         .question-display {
-            font-size: 1.1rem;
-            font-style: italic;
+            font-family: 'Century Gothic', sans-serif !important;
+            font-size: 1rem !important;
+            font-style: normal !important;
+            text-transform: none !important;
+            font-weight: normal !important;
+            letter-spacing: normal !important;
+            line-height: 1.4 !important;
+            font-variant: normal !important;
+            
             text-shadow: 0 2px 4px rgba(0,0,0,0.5);
             max-width: 90%;
             margin: 0 auto;
