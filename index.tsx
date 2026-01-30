@@ -221,7 +221,12 @@ function dealNextCard(currentState: ReadingState): ReadingState {
         const nextCard = currentState.shuffledSeq[currentState.nextCardIndex];
         nextCard.position = placement.pos;
         nextCard.role = placement.role;
-        if (placement.role === 'soluzione') nextCard.straighten();
+        
+        // RULE: La carta soluzione deve essere SEMPRE dritta.
+        if (placement.role === 'soluzione') {
+            nextCard.inverted = false;
+        }
+
         const newDealtCards = [...currentState.dealtCards, nextCard];
         const newDeckGrid = new Map(currentState.deckGrid);
         newDeckGrid.set(posToString(placement.pos), nextCard);
@@ -583,6 +588,10 @@ const App = () => {
     const handleMajorClick = (cardId: number) => {
         if (isInteracting || isPinching.current) return;
         if (!reading || !flippedCardIds.has(cardId)) return;
+        
+        // Retrieve the major card to check its role
+        const majorCard = reading.dealtCards.find(c => c.id === cardId);
+        
         const assoc = reading.minorAssociations[cardId];
         
         if (assoc) {
@@ -596,6 +605,11 @@ const App = () => {
         } else if (reading.availableMinors.length > 0) {
             const nextMinor = reading.availableMinors[0];
             const remaining = reading.availableMinors.slice(1);
+
+            // Force upright if the major card is in 'soluzione' role
+            const isSolution = majorCard?.role === 'soluzione';
+            const shouldInvert = isSolution ? false : Math.random() < 0.5;
+
             setReading({
                 ...reading,
                 availableMinors: remaining,
@@ -603,7 +617,7 @@ const App = () => {
                     ...reading.minorAssociations,
                     [cardId]: {
                         tarotNumber: nextMinor,
-                        inverted: Math.random() < 0.5,
+                        inverted: shouldInvert,
                         visible: true,
                         enlarged: false,
                         step: 0
@@ -768,10 +782,19 @@ const App = () => {
 
                                 const label = i === 0 ? "PASSATO" : i === 1 ? "PRESENTE" : i === 2 ? "FUTURO" : null;
 
+                                // VISUAL RULE: Se la carta ha il ruolo 'soluzione', forzala visivamente dritta, 
+                                // ignorando il suo stato interno (doppia sicurezza).
+                                const isSolution = card.role === 'soluzione';
+                                const effectiveInverted = isSolution ? false : card.inverted;
+
+                                // VISUAL RULE FOR MINOR: Se la carta Maggiore è 'soluzione', il minore associato
+                                // deve essere sempre dritto visivamente, sovrascrivendo qualsiasi altro stato.
+                                const minorAssocInverted = assoc ? (isSolution ? false : assoc.inverted) : false;
+
                                 return (
                                     <div
                                         key={card.id}
-                                        className={`card ${isFlipped ? 'is-flipped' : ''} ${card.inverted ? 'is-inverted' : ''} ${isVisible ? 'is-visible' : ''}`}
+                                        className={`card ${isFlipped ? 'is-flipped' : ''} ${effectiveInverted ? 'is-inverted' : ''} ${isVisible ? 'is-visible' : ''}`}
                                         style={{
                                             width: `${BASE_CARD_WIDTH}px`,
                                             height: `${BASE_CARD_HEIGHT}px`,
@@ -788,7 +811,11 @@ const App = () => {
                                                 </div>
                                             </div>
                                             <div className="card-front">
-                                                <img src={MAJOR_ARCANA_IMAGES[card.tarotNumber]} alt={card.name} />
+                                                <img 
+                                                    src={MAJOR_ARCANA_IMAGES[card.tarotNumber]} 
+                                                    alt={card.name} 
+                                                    style={isSolution ? { transform: 'none' } : undefined}
+                                                />
                                             </div>
                                         </div>
 
@@ -796,7 +823,7 @@ const App = () => {
                                         
                                         {assoc && assoc.visible && (
                                             <div 
-                                                className={`minor-card is-flipped ${assoc.inverted ? 'is-inverted' : ''} ${assoc.enlarged ? 'enlarged' : ''}`}
+                                                className={`minor-card is-flipped ${minorAssocInverted ? 'is-inverted' : ''} ${assoc.enlarged ? 'enlarged' : ''}`}
                                                 onClick={(e) => handleMinorClick(card.id, e)}
                                             >
                                                 <div className="card-inner">
