@@ -3,8 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { MAJOR_ARCANA_IMAGES, MINOR_ARCANA_IMAGES, MAJOR_BACK_IMAGE } from './card-images';
 
 // --- Configuration ---
-const DEAL_INTERVAL_MS = 1200; // Tempo tra una carta e l'altra (ms)
-const FLIP_OFFSET_MS = 600;    // Ritardo del flip rispetto alla comparsa (ms)
+const DEAL_INTERVAL_MS = 1200; // Tempo tra l'arrivo di una carta e l'altra (ms)
+const FLIP_OFFSET_MS = 600;    // Ritardo flip standard per le estrazioni successive
+const REVEAL_INTERVAL_MS = 1500; // Tempo tra una rivelazione e l'altra nella fase iniziale
+const PAUSE_BEFORE_REVEAL_MS = 800; // Pausa tra la fine della distribuzione e l'inizio della rivelazione
 
 const MIN_SCALE = 0.6;
 const MAX_SCALE = 1.6;
@@ -446,8 +448,9 @@ const App = () => {
         setReading(stateToStart);
         setView('reading');
         
+        // FASE 1: Distribuzione (tutte coperte)
         baseCards.forEach((card, index) => {
-            const baseDelay = index * DEAL_INTERVAL_MS;
+            const dealDelay = index * DEAL_INTERVAL_MS;
             
             const tMount = window.setTimeout(() => {
                 setReading(prev => {
@@ -469,20 +472,32 @@ const App = () => {
                         bounds: newBounds 
                     };
                 });
-            }, baseDelay);
+            }, dealDelay);
 
             const tVisible = window.setTimeout(() => {
                 setVisibleCardIds(prev => new Set(prev).add(card.id));
-            }, baseDelay + 50);
+            }, dealDelay + 50);
 
+            // Nota: NON scheduliamo il flip qui per mantenere il dorso visibile
+            animationTimers.current.push(tMount, tVisible);
+        });
+
+        // FASE 2: Rivelazione sequenziale (dopo che tutte sono state posate)
+        const dealPhaseDuration = baseCards.length * DEAL_INTERVAL_MS;
+        const revealStartTime = dealPhaseDuration + PAUSE_BEFORE_REVEAL_MS;
+
+        baseCards.forEach((card, index) => {
+            const revealDelay = revealStartTime + (index * REVEAL_INTERVAL_MS);
+            
             const tFlip = window.setTimeout(() => {
                 setFlippedCardIds(prev => new Set(prev).add(card.id));
-            }, baseDelay + FLIP_OFFSET_MS);
-
-            animationTimers.current.push(tMount, tVisible, tFlip);
+            }, revealDelay);
+            
+            animationTimers.current.push(tFlip);
         });
         
-        const totalDuration = baseCards.length * DEAL_INTERVAL_MS + 400;
+        // Fine interazione: sblocca UI dopo l'ultima rivelazione
+        const totalDuration = revealStartTime + (baseCards.length * REVEAL_INTERVAL_MS) + 500;
         const tEnd = window.setTimeout(() => setIsInteracting(false), totalDuration);
         animationTimers.current.push(tEnd);
     }, [isInteracting, clearAllTimers]);
