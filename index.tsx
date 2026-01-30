@@ -8,7 +8,7 @@ const FLIP_OFFSET_MS = 600;    // Ritardo flip standard per le estrazioni succes
 const REVEAL_INTERVAL_MS = 1500; // Tempo tra una rivelazione e l'altra nella fase iniziale
 const PAUSE_BEFORE_REVEAL_MS = 800; // Pausa tra la fine della distribuzione e l'inizio della rivelazione
 
-const MIN_SCALE = 0.6;
+const MIN_SCALE = 0.05;
 const MAX_SCALE = 1.6;
 const DEFAULT_SCALE = 1.0;
 
@@ -361,7 +361,8 @@ const App = () => {
     const handleZoomChange = (delta: number) => {
         setZoomLevel(prev => {
             const newVal = Math.min(Math.max(prev + delta, MIN_SCALE), MAX_SCALE);
-            const rounded = Math.round(newVal * 10) / 10;
+            // Arrotondamento a 2 cifre decimali (es. 0.05) invece che 1 (0.1)
+            const rounded = Math.round(newVal * 100) / 100;
             localStorage.setItem('tarot_zoom', rounded.toString());
             return rounded;
         });
@@ -687,11 +688,6 @@ const App = () => {
                         <button className="zoom-btn" onClick={() => handleZoomChange(-0.1)}>−</button>
                         <button className="zoom-btn" onClick={() => handleZoomChange(0.1)}>+</button>
                     </div>
-                    {isReadingFinished && Math.abs(zoomLevel - 1.0) > 0.05 && (
-                        <button className="reset-zoom-btn" onClick={() => setZoomLevel(1.0)}>
-                            RESET ZOOM
-                        </button>
-                    )}
                 </div>
 
                 <div className="info-toggle-container">
