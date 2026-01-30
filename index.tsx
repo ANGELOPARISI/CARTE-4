@@ -839,7 +839,7 @@ const App = () => {
             <div className="home-main-column">
                 <textarea 
                     className="question-input"
-                    placeholder="LA TUA DOMANDA"
+                    placeholder="La tua domanda"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                 />
