@@ -697,46 +697,49 @@ const App = () => {
                     )}
                 </div>
 
-                <div className="bottom-left-controls">
-                     <div className="zoom-controls">
-                        <button className="zoom-btn" onClick={() => handleZoomChange(-0.1)}>−</button>
-                        <button className="zoom-btn" onClick={() => handleZoomChange(0.1)}>+</button>
+                {/* NEW WRAPPER FOR BOTTOM CONTROLS TO PREVENT OVERLAP */}
+                <div className="bottom-controls-bar">
+                    <div className="bottom-left-controls">
+                         <div className="zoom-controls">
+                            <button className="zoom-btn" onClick={() => handleZoomChange(-0.1)}>−</button>
+                            <button className="zoom-btn" onClick={() => handleZoomChange(0.1)}>+</button>
+                        </div>
                     </div>
-                </div>
 
-                <div className="info-toggle-container">
-                    <button 
-                        className="info-icon-btn" 
-                        onClick={() => setShowInfo(!showInfo)}
-                        title="Informazioni sulla stesura"
-                    >
-                        i
-                    </button>
-                    
-                    {!reading.isComplete && !isStoppedManually && (
+                    <div className="info-toggle-container">
                         <button 
-                            className="draw-icon-btn" 
-                            onClick={handleDrawNextCard} 
-                            disabled={isInteracting}
-                            title="Estrai Carta Successiva"
+                            className="info-icon-btn" 
+                            onClick={() => setShowInfo(!showInfo)}
+                            title="Informazioni sulla stesura"
                         >
-                            <svg viewBox="0 0 20 30" fill="none" stroke="currentColor" strokeWidth="2">
-                                <rect x="2" y="2" width="16" height="26" rx="2"/>
-                                <circle cx="10" cy="15" r="3" strokeWidth="1" opacity="0.6"/>
-                                <path d="M6 10L14 10M6 20L14 20" strokeWidth="1" opacity="0.4"/>
-                            </svg>
+                            i
                         </button>
-                    )}
+                        
+                        {!reading.isComplete && !isStoppedManually && (
+                            <button 
+                                className="draw-icon-btn" 
+                                onClick={handleDrawNextCard} 
+                                disabled={isInteracting}
+                                title="Estrai Carta Successiva"
+                            >
+                                <svg viewBox="0 0 20 30" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <rect x="2" y="2" width="16" height="26" rx="2"/>
+                                    <circle cx="10" cy="15" r="3" strokeWidth="1" opacity="0.6"/>
+                                    <path d="M6 10L14 10M6 20L14 20" strokeWidth="1" opacity="0.4"/>
+                                </svg>
+                            </button>
+                        )}
 
-                    {!reading.isComplete && (
-                        <button 
-                            className="draw-icon-btn stop-btn" 
-                            onClick={handleManualStop}
-                            title="Interrompi Stesura"
-                        >
-                            F
-                        </button>
-                    )}
+                        {!reading.isComplete && (
+                            <button 
+                                className="draw-icon-btn stop-btn" 
+                                onClick={handleManualStop}
+                                title="Interrompi Stesura"
+                            >
+                                F
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="corner-controls">

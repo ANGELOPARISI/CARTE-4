@@ -266,11 +266,26 @@
             color: var(--text-light);
         }
         
-        .bottom-left-controls {
+        /* LAYOUT BARRA CONTROLLI INFERIORI (CONTAINER FISSO) */
+        .bottom-controls-bar {
             position: fixed;
             bottom: 30px;
-            left: 30px;
+            left: 0;
+            right: 0;
+            height: 0; /* Altezza zero per non bloccare i click sopra */
             z-index: 100;
+            display: flex;
+            justify-content: center;
+            pointer-events: none; /* Lascia passare i click dove non ci sono bottoni */
+        }
+
+        /* GRUPPO ZOOM (SINISTRA) */
+        .bottom-left-controls {
+            position: absolute;
+            bottom: 0;
+            left: 30px;
+            pointer-events: auto; /* Riabilita i click */
+            z-index: 101;
         }
 
         .zoom-controls {
@@ -282,22 +297,37 @@
             border-radius: 8px;
             border: 1px solid var(--amber-warm);
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            height: 46px; /* Altezza esplicita per allineamento */
+            box-sizing: border-box;
         }
 
+        /* GRUPPO CENTRALE (INFO/DRAW/F) */
         .info-toggle-container {
-            position: fixed;
-            bottom: 30px;
+            position: absolute;
+            bottom: 0;
             left: 50%;
             transform: translateX(-50%);
             z-index: 105;
+            pointer-events: auto; /* Riabilita i click */
+            
             display: flex;
             flex-direction: row; 
             align-items: center;
-            gap: 8px;
-            padding: 6px 12px;
-            background-color: rgba(93, 58, 26, 0.8);
+            justify-content: center;
+            
+            background-color: rgba(93, 58, 26, 0.85);
             border-radius: 8px;
             border: 1px solid var(--amber-warm);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            
+            height: 46px; /* Stessa altezza dello zoom */
+            padding: 0 20px;
+            gap: 20px;
+            box-sizing: border-box;
+
+            /* Prevenzione sovrapposizione con zoom */
+            max-width: calc(100vw - 240px);
+            white-space: nowrap;
         }
 
         .info-tooltip {
@@ -664,7 +694,21 @@
 
         @media (max-width: 600px) {
             .daily-card-img { max-height: 65vh; }
-            .corner-controls, .bottom-left-controls, .info-toggle-container { bottom: 20px; }
+            .corner-controls { bottom: 20px; } /* FINE button a destra */
+            
+            /* Spostamento verso l'alto della barra controlli su mobile */
+            .bottom-controls-bar { bottom: 20px; }
+            
+            /* Leggero spostamento del gruppo zoom per dare più spazio al centro su schermi molto stretti */
+            .bottom-left-controls { left: 20px; }
+            
+            .info-toggle-container {
+                gap: 12px;
+                padding: 0 12px;
+                /* Riduce il max-width per evitare collisione col bottone zoom */
+                max-width: calc(100vw - 200px);
+            }
+
             .home-top-row { flex-direction: column; max-width: 320px; gap: 10px; }
             .question-input, .start-button, .daily-button { width: 320px !important; }
         }
